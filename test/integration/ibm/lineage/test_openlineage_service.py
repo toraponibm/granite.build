@@ -86,7 +86,10 @@ class MockLineageService(LineageService):
                 facets = ds.get("facets", {})
                 if repo_id != facets.get("repo_id", ""):
                     continue
-                if artifact_type is not None and facets.get("artifact_type") != artifact_type:
+                if (
+                    artifact_type is not None
+                    and facets.get("artifact_type") != artifact_type
+                ):
                     continue
                 matching.append(ev)
                 break

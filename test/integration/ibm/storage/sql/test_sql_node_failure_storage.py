@@ -11,7 +11,6 @@ from gbserver.storage.sql.storage_factory import SQLStorageFactory
 pytestmark = pytest.mark.ibm
 
 
-
 @pytest.mark.skipif(
     os.environ.get("SKIP_SQL_ADMIN_TESTS", "False").lower() == "true",
     reason="Don't want to run this in CICD.",

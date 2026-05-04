@@ -19,7 +19,6 @@ pytestmark = pytest.mark.ibm
 logger = get_logger(__name__)
 
 
-
 @pytest.mark.skip(reason="pr-watcher being deprecated")
 class TestGithubManager(AbstractSingletonStorageUsingPreloadedSpaceTest):
 

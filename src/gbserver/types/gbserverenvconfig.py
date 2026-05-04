@@ -142,10 +142,10 @@ _GBSERVER_ENVIRONMENT_CONFIGS = {
         space_config_branch_name="gbspace-config",
         feature_flags={
             "lakehouse_space_membership": getenv_boolean(
-                "GBSERVER_FEATURE_LAKEHOUSE_SPACE_MEMBERSHIP", False 
+                "GBSERVER_FEATURE_LAKEHOUSE_SPACE_MEMBERSHIP", False
             ),
             "lakehouse_lineage": getenv_boolean(
-                "GBSERVER_FEATURE_LAKEHOUSE_LINEAGE", False 
+                "GBSERVER_FEATURE_LAKEHOUSE_LINEAGE", False
             ),
         },
     ),

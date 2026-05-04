@@ -34,6 +34,7 @@ def disable_hf_mocks() -> None:
     """Disable HF mocking by removing GBTEST_MOCK_HF_CALLS from the environment."""
     os.environ.pop(ENV_VAR_GBTEST_MOCK_HF_CALLS, None)
 
+
 # Causes the supporting environments that implement step-level retry to inject
 # an initial failure event to trigger the step retry in the environment, if the step supports retries.
 # Any environment that supports retries using Environment.with_retry_handler() will
@@ -58,6 +59,7 @@ def enable_failure_simulation() -> None:
 def disable_failure_simulation() -> None:
     """Disable failure simulation by removing GBTEST_SIMULATE_FAILURE_SCENARIO from the environment."""
     os.environ.pop(ENV_VAR_GBTEST_SIMULATE_FAILURE_SCENARIO, None)
+
 
 # The set of all GBTEST_ env var names defined in this module.
 _GBTEST_EXPORTED_ENV_VARS = {

@@ -516,9 +516,7 @@ class WandBLineageService(LineageService):
                     api, project_path, repo_id, artifact_type
                 )
             else:
-                matching_run_ids = self._search_by_runs(
-                    api, project_path, repo_id
-                )
+                matching_run_ids = self._search_by_runs(api, project_path, repo_id)
 
             total_count = len(matching_run_ids)
             paginated_ids = matching_run_ids[offset : offset + limit]

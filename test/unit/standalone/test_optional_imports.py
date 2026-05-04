@@ -5,6 +5,7 @@ They run with the full test venv (all packages installed) and verify guard flags
 and lazy-import patterns are properly set up.
 """
 
+
 class TestStandaloneImports:
     """Verify that key modules have proper import guards for optional dependencies."""
 
