@@ -262,6 +262,27 @@ def get_repo_tags(token: str, space_org: str, space_name: str) -> Any:
     return data_obj
 
 
+def get_public_repo_tags(space_org: str, space_name: str) -> Any:
+    """Fetch a repo's tags over unauthenticated, public HTTPS.
+
+    Always targets public github.com (api.github.com) regardless of the configured
+    enterprise domain, and sends no Authorization header. This lets callers query a
+    public repo without GitHub credentials or SSH keys.
+    """
+    tags_url = f"https://api.github.com/repos/{space_org}/{space_name}/git/refs/tags"
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    response = requests.get(tags_url, headers=headers)
+    response.raise_for_status()
+    data_obj = response.json()
+
+    return data_obj
+
+
 def run_github_command(command, callback=None, final_command=None):
     try:
         result = command()

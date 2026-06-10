@@ -14,46 +14,79 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Standalone-mode behavior of the CLI version check.
+"""Behavior of the CLI version check.
 
-``check_current_and_latest_versions()`` runs at the top of most ``gb`` commands and
-queries GitHub Enterprise (requiring GitHub auth). In standalone mode that auth is
-unavailable, so the check must be skipped (return "") rather than raising
-"user not logged in".
+``check_current_and_latest_versions()`` runs at the top of most ``gb`` commands. It
+queries the public granite.build repo over unauthenticated HTTPS, so it needs no
+GitHub credentials, SSH keys, or login and works everywhere (including standalone
+mode). When the public lookup can't complete it silently returns "" rather than
+blocking the command.
 """
 
 import pytest
 
 from gbcli.utils import versionutil
-from gbcli.utils.gbconstants import USER_NOT_LOGGED_IN_ERROR_MESSAGE
 
 
-class TestVersionCheckStandalone:
-    def test_skipped_in_standalone(self, monkeypatch):
-        """In standalone mode the check returns '' without touching credentials/network."""
+class TestVersionCheck:
+    def test_no_credentials_required(self, monkeypatch):
+        """The check never touches GitHub credentials/login — only the public API."""
         monkeypatch.setenv("GB_ENVIRONMENT", "STANDALONE")
 
-        # Guard: if the check did NOT short-circuit, these would be reached and blow up,
-        # making the test fail loudly rather than silently passing for the wrong reason.
-        def _boom(*args, **kwargs):
-            raise AssertionError("version check should not reach credentials/network")
+        called = {}
 
-        monkeypatch.setattr(versionutil, "GBCredentials", _boom)
+        def _fake_latest(repo_org, repo_name):
+            called["repo"] = (repo_org, repo_name)
+            return "0.0.0"
+
+        monkeypatch.setattr(versionutil, "get_latest_version", _fake_latest)
+        monkeypatch.setattr(versionutil, "get_current_version", lambda _: "0.0.0")
+
+        assert versionutil.check_current_and_latest_versions() == ""
+        # The public granite.build repo is queried regardless of environment/auth.
+        assert called["repo"] == (
+            versionutil.GB_PUBLIC_REPO_ORG,
+            versionutil.GB_PUBLIC_REPO_NAME,
+        )
+
+    def test_reports_when_outdated(self, monkeypatch):
+        """An older installed version yields an upgrade notice mentioning the latest tag."""
+        monkeypatch.setattr(versionutil, "get_latest_version", lambda *_: "2.0.0")
+        monkeypatch.setattr(versionutil, "get_current_version", lambda _: "1.0.0")
+
+        msg = versionutil.check_current_and_latest_versions()
+        assert "2.0.0" in msg
+        assert "1.0.0" in msg
+
+    def test_silent_when_lookup_fails(self, monkeypatch):
+        """A failed public lookup is swallowed (returns "") so the command isn't blocked."""
+
+        def _boom(*args, **kwargs):
+            raise Exception("network down")
+
         monkeypatch.setattr(versionutil, "get_latest_version", _boom)
 
         assert versionutil.check_current_and_latest_versions() == ""
 
-    def test_requires_login_outside_standalone(self, monkeypatch):
-        """Outside standalone, missing credentials still raise 'user not logged in'."""
-        monkeypatch.setenv("GB_ENVIRONMENT", "PROD")
+    def test_get_latest_version_skips_malformed_tags(self, monkeypatch):
+        """Malformed (non-PEP440) tags are ignored, not fatal, and the highest valid wins."""
+        tags = [
+            {"ref": "refs/tags/v1.0.0"},
+            {"ref": "refs/tags/not-a-version"},  # malformed: skipped
+            {"ref": "refs/tags/v2.3.1"},
+            {"ref": "refs/tags/latest"},  # malformed: skipped
+            {"ref": "refs/tags/v2.0.0"},
+        ]
+        monkeypatch.setattr(versionutil, "get_public_repo_tags", lambda *_: tags)
 
-        class _FakeCreds:
-            def check_values(self):
-                return False
+        assert versionutil.get_latest_version("ibm-granite", "granite.build") == "2.3.1"
 
-        monkeypatch.setattr(versionutil, "GBCredentials", lambda: _FakeCreds())
+    def test_get_latest_version_all_malformed(self, monkeypatch):
+        """If no tag is a valid version, fall back to '0.0.0' rather than raising."""
+        tags = [
+            {"ref": "refs/tags/nightly"},
+            {"ref": "refs/tags/release-candidate"},
+        ]
+        monkeypatch.setattr(versionutil, "get_public_repo_tags", lambda *_: tags)
 
-        with pytest.raises(Exception) as exc_info:
-            versionutil.check_current_and_latest_versions()
-
-        assert USER_NOT_LOGGED_IN_ERROR_MESSAGE in str(exc_info.value)
+        assert versionutil.get_latest_version("ibm-granite", "granite.build") == "0.0.0"
