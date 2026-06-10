@@ -68,6 +68,15 @@ class TestVersionCheck:
 
         assert versionutil.check_current_and_latest_versions() == ""
 
+    def test_silent_when_current_version_unparseable(self, monkeypatch):
+        """An unparseable installed version (e.g. "unknown" from a non-pip-installed
+        source checkout) must not raise InvalidVersion and abort the command — the
+        whole comparison is best-effort, so it returns ""."""
+        monkeypatch.setattr(versionutil, "get_latest_version", lambda *_: "2.0.0")
+        monkeypatch.setattr(versionutil, "get_current_version", lambda _: "unknown")
+
+        assert versionutil.check_current_and_latest_versions() == ""
+
     def test_get_latest_version_skips_malformed_tags(self, monkeypatch):
         """Malformed (non-PEP440) tags are ignored, not fatal, and the highest valid wins."""
         tags = [

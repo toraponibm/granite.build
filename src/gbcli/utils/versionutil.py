@@ -42,18 +42,20 @@ def check_current_and_latest_versions() -> str:
     # HTTPS, so it needs no GitHub credentials, SSH keys, or login. It therefore works
     # everywhere, including standalone mode.
     #
-    # This is a best-effort notice, not a gate: if the public lookup can't complete
-    # (offline, rate-limited, etc.) we silently skip it rather than blocking the
-    # command the user actually ran.
+    # This is a best-effort notice, not a gate: if the check can't complete (offline,
+    # rate-limited, or the installed version can't be parsed — e.g. "unknown" from a
+    # non-pip-installed source checkout) we silently skip it rather than blocking the
+    # command the user actually ran. The whole comparison runs inside the try so a
+    # parse failure on either side never escapes.
     try:
         latest_version = get_latest_version(GB_PUBLIC_REPO_ORG, GB_PUBLIC_REPO_NAME)
+        current_version = get_current_version("granite.build")
+        is_outdated = Version(current_version) < Version(latest_version)
     except Exception as e:
-        logger.debug("Skipping version check; public lookup failed: %s", e)
+        logger.debug("Skipping version check: %s", e)
         return ""
 
-    current_version = get_current_version("granite.build")
-
-    if Version(current_version) < Version(latest_version):
+    if is_outdated:
         return (
             f"A new version of {PROJECT_NAME} CLI ({latest_version}) is available. "
             f"You are currently running version {current_version}. "

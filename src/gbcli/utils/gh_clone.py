@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 
 _GH_API_BASE = get_gh_api_base()
 
+# Short timeout for the unauthenticated public tag fetch used by the CLI version
+# check, which runs at the top of most commands. Keep it small so a blackholed
+# network can't hang the CLI on a courtesy check (see get_public_repo_tags).
+PUBLIC_REPO_TAGS_TIMEOUT_S = 5
+
 
 def clone_github_repo(
     token: str,
@@ -275,9 +280,15 @@ def get_public_repo_tags(space_org: str, space_name: str) -> Any:
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
+    # Request the max page size so the caller sees up to 100 tags without paginating.
+    # This runs at the top of most commands, so cap the wait: a blackholed network
+    # must not hang the CLI on a courtesy version check.
+    params = {"per_page": 100}
 
     logger.debug("Fetching public repo tags (unauthenticated) from %s", tags_url)
-    response = requests.get(tags_url, headers=headers)
+    response = requests.get(
+        tags_url, headers=headers, params=params, timeout=PUBLIC_REPO_TAGS_TIMEOUT_S
+    )
     response.raise_for_status()
     data_obj = response.json()
     logger.debug("Public repo tags response: %d tag(s)", len(data_obj))
