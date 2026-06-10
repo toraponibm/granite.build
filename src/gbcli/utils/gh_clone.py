@@ -276,9 +276,11 @@ def get_public_repo_tags(space_org: str, space_name: str) -> Any:
         "X-GitHub-Api-Version": "2022-11-28",
     }
 
+    logger.debug("Fetching public repo tags (unauthenticated) from %s", tags_url)
     response = requests.get(tags_url, headers=headers)
     response.raise_for_status()
     data_obj = response.json()
+    logger.debug("Public repo tags response: %d tag(s)", len(data_obj))
 
     return data_obj
 
