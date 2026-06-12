@@ -75,6 +75,11 @@ def cli(ctx):
     # (list, describe, checksum, archive, unarchive, update) work in standalone mode.
     # Subcommands that depend on Lakehouse/HuggingFace (push, register, download, copy,
     # lineage) are guarded individually with @reject_standalone below.
+    #
+    # Unlike the secret/admin/template/step/model groups (guarded once at the group level),
+    # artifact is deliberately guarded per-subcommand because only *some* of its commands
+    # need cloud services. Accepted tradeoff: a new cloud-dependent artifact subcommand
+    # must remember its own @reject_standalone -- there is no group-level safety net.
     ctx.ensure_object(dict)  # Ensures `ctx.obj` is a dictionary
 
 

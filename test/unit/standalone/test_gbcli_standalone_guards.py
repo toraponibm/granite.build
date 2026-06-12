@@ -166,6 +166,35 @@ class TestArtifactStandaloneGuards:
             f"got: {result.output!r}"
         )
 
+    def test_warning_uses_qualified_command_name(self):
+        """The warning must name the command as ``artifact register``, not just ``register``.
+
+        ``reject_standalone`` derives the name from ``ctx.command_path`` minus the program
+        name, so it only reads correctly when the artifact group is mounted under a root
+        (as it is under the real ``gb`` CLI). Mount it that way here so the qualified-name
+        logic is actually exercised -- invoking the group as its own root would collapse
+        the name back to the bare leaf and silently pass.
+        """
+        import click
+
+        artifact_cli = _load_cli("gbcli.commands.command_artifact")
+        root = click.Group("gb")
+        root.add_command(artifact_cli)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            root,
+            ["artifact", "register", "--artifact-name", "a"],
+            env=STANDALONE_ENV,
+            prog_name="gb",
+        )
+
+        assert result.exit_code != 0
+        assert "'artifact register'" in result.output, (
+            f"expected qualified command name 'artifact register' in warning, "
+            f"got: {result.output!r}"
+        )
+
     @pytest.mark.parametrize(
         "module_path,group_name,subcommand", ARTIFACT_UNGUARDED_SUBCOMMANDS
     )
