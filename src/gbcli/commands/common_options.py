@@ -23,6 +23,52 @@ def exit_if_standalone(command_name: str) -> None:
         sys.exit(1)
 
 
+def _command_name_from_context(ctx: click.Context) -> str:
+    """Build a qualified command name (e.g. ``"artifact register"``) from a context.
+
+    Walks the parent chain collecting each ``info_name`` and drops the root (the program
+    name, e.g. ``gb``), so the standalone warning reads ``'artifact register'`` rather than
+    just ``'register'`` -- without callers having to spell the name out.
+    """
+    names = []
+    cur: click.Context | None = ctx
+    while cur is not None and cur.parent is not None:
+        if cur.info_name:
+            names.append(cur.info_name)
+        cur = cur.parent
+    return " ".join(reversed(names)) or (ctx.info_name or "")
+
+
+def reject_standalone(f):
+    """Decorator that guards a single command against standalone mode.
+
+    Unlike :func:`pass_context_and_reject_standalone`, this does *not* inject the Click
+    context -- it reads the active context via ``click.get_current_context`` and leaves the
+    wrapped callback's signature untouched, so it composes with a command's own
+    ``@click.pass_context`` (and other option decorators) without consuming an argument.
+    Use it as a bare decorator to gate the cloud-only subcommands of a group whose other
+    subcommands work in standalone mode, so the group itself stays unguarded::
+
+        @cli.command()
+        @click.pass_context
+        @reject_standalone
+        def register(ctx, ...):
+            ...
+
+    Click handles ``--help`` before the callback, so help is unaffected. The name shown in
+    the warning is derived from the active context (e.g. ``"artifact register"``), so no
+    argument is needed.
+    """
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        ctx = click.get_current_context()
+        exit_if_standalone(_command_name_from_context(ctx))
+        return f(*args, **kwargs)
+
+    return wrapper
+
+
 def pass_context_and_reject_standalone(command_name=None):
     """Decorator that passes the Click context and guards against standalone mode.
 
